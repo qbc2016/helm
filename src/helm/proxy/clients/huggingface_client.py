@@ -61,6 +61,7 @@ class HuggingFaceServer:
                         self.model.load_state_dict(ckpt['model'])
                     else:
                         self.model.load_state_dict(ckpt)
+                    print(f"Tested ckpt is {cfg.federate.save_to}")
                 except Exception as error:
                     print(f"{error}, will use raw model.")
 

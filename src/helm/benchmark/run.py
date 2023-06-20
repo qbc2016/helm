@@ -262,6 +262,9 @@ def main():
         init_cfg.merge_from_file(args.yaml)
         YamlConfigClass.config = init_cfg
         YamlConfigClass.ckpt_path = args.ckpt_path
+    else:
+        YamlConfigClass.config = None
+        YamlConfigClass.ckpt_path = None
 
     # dawei: register local model
     # transformers.AutoConfig.register(MegatronLlamaConfig.model_type, MegatronLlamaConfig)
