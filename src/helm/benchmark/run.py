@@ -248,7 +248,7 @@ def main():
         help="",
         default="")
     parser.add_argument(
-        "--ckpt_path",
+        "--ckpt_dir",
         type=str,
         help="",
         default="../FederatedScope")
@@ -261,10 +261,10 @@ def main():
     if args.yaml:
         init_cfg.merge_from_file(args.yaml)
         YamlConfigClass.config = init_cfg
-        YamlConfigClass.ckpt_path = args.ckpt_path
+        YamlConfigClass.ckpt_dir = args.ckpt_dir
     else:
         YamlConfigClass.config = None
-        YamlConfigClass.ckpt_path = None
+        YamlConfigClass.ckpt_dir = None
 
     # dawei: register local model
     # transformers.AutoConfig.register(MegatronLlamaConfig.model_type, MegatronLlamaConfig)
