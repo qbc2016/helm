@@ -22,6 +22,8 @@ import traceback
 import os
 import threading
 
+from helm.benchmark.yaml_bridge import YamlConfigClass
+
 
 def print_traceback(e):
     lines = traceback.format_exception(type(e), e, e.__traceback__)
@@ -48,13 +50,32 @@ class HuggingFaceServer:
         model_kwargs = {}
         if model_config.revision:
             model_kwargs["revision"] = model_config.revision
-        with htrack_block(f"Loading Hugging Face model for config {model_config}"):
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_config.model_id, trust_remote_code=True, **model_kwargs
-            ).to(self.device)
-        hlog(f"{type(self.model)}, {self.model.__class__}")
-        with htrack_block(f"Loading Hugging Face tokenizer model for config {model_config}"):
-            self.tokenizer = AutoTokenizer.from_pretrained(model_config.model_id, **model_kwargs)
+        if YamlConfigClass.config:
+            cfg = YamlConfigClass.config
+            with htrack_block(f"Loading Hugging Face model for config {model_config}"):
+                self.model = get_llm(cfg)
+                fp = os.path.join(YamlConfigClass.ckpt_path, cfg.federate.save_to)
+                try:
+                    ckpt = torch.load(fp, map_location='cpu')
+                    if 'model' and 'cur_round' in ckpt:
+                        self.model.load_state_dict(ckpt['model'])
+                    else:
+                        self.model.load_state_dict(ckpt)
+                except Exception as error:
+                    print(f"{error}, will use raw model.")
+
+                hlog(f"{type(self.model)}, {self.model.__class__}")
+                self.model.to(self.device)
+            with htrack_block(f"Loading Hugging Face tokenizer for config {model_config}"):
+                self.tokenizer = AutoTokenizer.from_pretrained(model_config.model_id, **model_kwargs)
+        else:
+            with htrack_block(f"Loading Hugging Face model for config {model_config}"):
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_config.model_id, trust_remote_code=True, **model_kwargs
+                ).to(self.device)
+            hlog(f"{type(self.model)}, {self.model.__class__}")
+            with htrack_block(f"Loading Hugging Face tokenizer model for config {model_config}"):
+                self.tokenizer = AutoTokenizer.from_pretrained(model_config.model_id, **model_kwargs)
 
     def serve_request(self, raw_request: Dict[str, Any]):
         encoded_input = self.tokenizer(raw_request["prompt"], return_tensors="pt").to(self.device)

@@ -17,9 +17,12 @@ from helm.benchmark.runner import Runner, RunSpec
 from helm.benchmark.run_specs import construct_run_specs
 
 import transformers
-from helm.models.modeling_megatron_llama import MegatronLlamaForCausalLM, MegatronLlamaConfig
+# from helm.models.modeling_megatron_llama import MegatronLlamaForCausalLM, MegatronLlamaConfig
 
 LATEST_SYMLINK: str = "latest"
+
+from helm.benchmark.yaml_bridge import YamlConfigClass
+from federatedscope.core.configs.config import global_cfg
 
 
 def run_entries_to_run_specs(
@@ -238,13 +241,31 @@ def main():
         "The client will use RemoteWindowService for windowing. "
         "Format: namespace/model_name[@revision]",
     )
+
+    parser.add_argument(
+        "--yaml",
+        type=str,
+        help="",
+        default="")
+    parser.add_argument(
+        "--ckpt_path",
+        type=str,
+        help="",
+        default="../FederatedScope")
+
     add_run_args(parser)
     args = parser.parse_args()
     validate_args(args)
 
+    init_cfg = global_cfg.clone()
+    if args.yaml:
+        init_cfg.merge_from_file(args.yaml)
+        YamlConfigClass.config = init_cfg
+        YamlConfigClass.ckpt_path = args.ckpt_path
+
     # dawei: register local model
-    transformers.AutoConfig.register(MegatronLlamaConfig.model_type, MegatronLlamaConfig)
-    transformers.AutoModelForCausalLM.register(MegatronLlamaConfig, MegatronLlamaForCausalLM)
+    # transformers.AutoConfig.register(MegatronLlamaConfig.model_type, MegatronLlamaConfig)
+    # transformers.AutoModelForCausalLM.register(MegatronLlamaConfig, MegatronLlamaForCausalLM)
 
     for huggingface_model_name in args.enable_huggingface_models:
         register_huggingface_model_config(huggingface_model_name)
