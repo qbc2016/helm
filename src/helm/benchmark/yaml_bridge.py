@@ -12,4 +12,4 @@ def singleton(cls):
 @singleton
 class YamlConfigClass:
     config = None
-    ckpt_path = None
+    ckpt_dir = None
