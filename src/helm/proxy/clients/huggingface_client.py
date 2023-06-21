@@ -23,6 +23,7 @@ import os
 import threading
 
 from helm.benchmark.yaml_bridge import YamlConfigClass
+from federatedscope.llm.model.model_builder import get_llm
 
 
 def print_traceback(e):
