@@ -104,42 +104,67 @@ class HuggingFaceServer:
 
         # dawei: resolve the bug for huggingface
         # Use HuggingFace's `generate` method.
+        # del encoded_input['token_type_ids']
         del encoded_input['token_type_ids']
-        output = self.model.generate(**encoded_input, **relevant_raw_request)
-        sequences = output.sequences
-        scores = output.scores
+        if raw_request['echo_prompt'] and raw_request['max_new_tokens'] == 0:
+            logits = self.model.forward(**encoded_input).logits
+            sequences = encoded_input.input_ids
+            all_tokens = [self.tokenizer.convert_ids_to_tokens(sequence) for sequence in sequences]
+            all_decoded_text = raw_request["prompt"]
+            all_logprobs_of_chosen_tokens = []
+            all_top_logprobs_dicts = []
+            for completion_id in range(raw_request["num_return_sequences"]):
+                logprobs_of_chosen_tokens = [0.0]
+                top_logprobs_dicts = [{}]
+                for i in range(len(encoded_input.input_ids[0]) - 1):
+                    logprobs = torch.nn.functional.log_softmax(logits[completion_id][i], dim=0)
+                    # Get top tokens in terms of log probability.
+                    topk_logprobs = torch.topk(logprobs, k=top_k_per_token)
+                    top_logprobs_dicts.append(
+                        {
+                            self.tokenizer.convert_ids_to_tokens(k.item()): v.item()
+                            for (k, v) in zip(topk_logprobs.indices, topk_logprobs.values)
+                        }
+                    )
+                    logprobs_of_chosen_tokens.append(logprobs[sequences[completion_id][i + 1]].item())
+                    all_logprobs_of_chosen_tokens.append(logprobs_of_chosen_tokens)
+                    all_top_logprobs_dicts.append(top_logprobs_dicts)
+        else:
+            output = self.model.generate(**encoded_input, **relevant_raw_request)
+            sequences = output.sequences
+            scores = output.scores
 
-        # Compute logprobs for each completed sequence.
-        all_logprobs_of_chosen_tokens = []
-        all_top_logprobs_dicts = []
-        for completion_id in range(raw_request["num_return_sequences"]):
-            logprobs_of_chosen_tokens = []
-            top_logprobs_dicts = []
-            for i in range(len(sequences[completion_id]) - len(encoded_input.input_ids[0])):
-                logprobs = torch.nn.functional.log_softmax(scores[i][completion_id], dim=0)
+            # Compute logprobs for each completed sequence.
+            all_logprobs_of_chosen_tokens = []
+            all_top_logprobs_dicts = []
+            for completion_id in range(raw_request["num_return_sequences"]):
+                logprobs_of_chosen_tokens = []
+                top_logprobs_dicts = []
+                for i in range(len(sequences[completion_id]) - len(encoded_input.input_ids[0])):
+                    logprobs = torch.nn.functional.log_softmax(scores[i][completion_id], dim=0)
 
-                # Get top tokens in terms of log probability.
-                topk_logprobs = torch.topk(logprobs, k=top_k_per_token)
-                top_logprobs_dicts.append(
-                    {
-                        self.tokenizer.convert_ids_to_tokens(k.item()): v.item()
-                        for (k, v) in zip(topk_logprobs.indices, topk_logprobs.values)
-                    }
-                )
+                    # Get top tokens in terms of log probability.
+                    topk_logprobs = torch.topk(logprobs, k=top_k_per_token)
+                    top_logprobs_dicts.append(
+                        {
+                            self.tokenizer.convert_ids_to_tokens(k.item()): v.item()
+                            for (k, v) in zip(topk_logprobs.indices, topk_logprobs.values)
+                        }
+                    )
 
-                # Get log probability of chosen token.
-                j = i + len(encoded_input.input_ids[0])
-                logprobs_of_chosen_tokens.append(logprobs[sequences[completion_id][j]].item())
-            all_logprobs_of_chosen_tokens.append(logprobs_of_chosen_tokens)
-            all_top_logprobs_dicts.append(top_logprobs_dicts)
+                    # Get log probability of chosen token.
+                    j = i + len(encoded_input.input_ids[0])
+                    logprobs_of_chosen_tokens.append(logprobs[sequences[completion_id][j]].item())
+                all_logprobs_of_chosen_tokens.append(logprobs_of_chosen_tokens)
+                all_top_logprobs_dicts.append(top_logprobs_dicts)
 
-        # Remove prompt from the start of each sequence if echo_prompt is False.
-        if not raw_request["echo_prompt"]:
-            sequences = [sequence[len(encoded_input.input_ids[0]) :] for sequence in sequences]
+            # Remove prompt from the start of each sequence if echo_prompt is False.
+            if not raw_request["echo_prompt"]:
+                sequences = [sequence[len(encoded_input.input_ids[0]) :] for sequence in sequences]
 
-        # TODO: Get rid of the extra tokenization?
-        all_tokens = [self.tokenizer.convert_ids_to_tokens(sequence) for sequence in sequences]
-        all_decoded_text = self.tokenizer.batch_decode(sequences, skip_special_tokens=True)
+            # TODO: Get rid of the extra tokenization?
+            all_tokens = [self.tokenizer.convert_ids_to_tokens(sequence) for sequence in sequences]
+            all_decoded_text = self.tokenizer.batch_decode(sequences, skip_special_tokens=True)
 
         completions = []
         for (decoded_text, tokens, logprobs_of_chosen_tokens, top_logprobs_dicts) in zip(
@@ -228,7 +253,10 @@ class HuggingFaceClient(Client):
             sequence_logprob: float = 0
             tokens: List[Token] = []
 
-            if request.echo_prompt:
+            # if request.echo_prompt:
+            if request.echo_prompt and request.max_tokens == 0:
+                generated_tokens = raw_completion["tokens"]
+            elif request.echo_prompt:
                 # Add prompt to list of generated tokens.
                 generated_tokens = raw_completion["tokens"][response["input_length"] :]
                 for token_text in raw_completion["tokens"][: response["input_length"]]:
