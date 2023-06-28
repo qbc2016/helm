@@ -2,10 +2,10 @@
 
 set -e
  
-SUITE_NAME=test_nl2sql
+SUITE_NAME=test
 
-PATH_HELM=/root/src/helm
-PATH_WORKDIR=/root/src/helm
+PATH_HELM=/root/src/crfm-helm
+PATH_WORKDIR=/root/src/crfm-helm
 
 
 cd ${PATH_WORKDIR}
