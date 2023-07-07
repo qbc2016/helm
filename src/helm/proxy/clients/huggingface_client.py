@@ -74,7 +74,9 @@ class HuggingFaceServer:
             with htrack_block(f"Loading Hugging Face model for config {model_config}"):
                 self.model = AutoModelForCausalLM.from_pretrained(
                     model_config.model_id, trust_remote_code=True, **model_kwargs
-                ).to(self.device)
+                )
+                self.model.eval()
+                self.model.to(self.device)
             hlog(f"{type(self.model)}, {self.model.__class__}")
             with htrack_block(f"Loading Hugging Face tokenizer model for config {model_config}"):
                 self.tokenizer = AutoTokenizer.from_pretrained(model_config.model_id, **model_kwargs)
