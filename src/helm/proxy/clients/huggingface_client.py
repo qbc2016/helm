@@ -66,6 +66,7 @@ class HuggingFaceServer:
                     print(f"{error}, will use raw model.")
 
                 hlog(f"{type(self.model)}, {self.model.__class__}")
+                self.model.eval()
                 self.model.to(self.device)
             with htrack_block(f"Loading Hugging Face tokenizer for config {model_config}"):
                 self.tokenizer = AutoTokenizer.from_pretrained(model_config.model_id, **model_kwargs)
