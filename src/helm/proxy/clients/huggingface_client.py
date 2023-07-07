@@ -55,9 +55,8 @@ class HuggingFaceServer:
             cfg = YamlConfigClass.config
             with htrack_block(f"Loading Hugging Face model for config {model_config}"):
                 self.model = get_llm(cfg)
-                fp = os.path.join(YamlConfigClass.ckpt_dir, cfg.federate.save_to)
                 try:
-                    ckpt = torch.load(fp, map_location='cpu')
+                    ckpt = torch.load(cfg.federate.save_to, map_location='cpu')
                     if 'model' and 'cur_round' in ckpt:
                         self.model.load_state_dict(ckpt['model'])
                     else:

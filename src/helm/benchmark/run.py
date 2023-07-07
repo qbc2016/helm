@@ -247,11 +247,11 @@ def main():
         type=str,
         help="",
         default="")
-    parser.add_argument(
-        "--ckpt_dir",
-        type=str,
-        help="",
-        default="../FederatedScope")
+
+    parser.add_argument('opts',
+                        help='See federatedscope/core/configs for all options',
+                        default=None,
+                        nargs=argparse.REMAINDER)
 
     add_run_args(parser)
     args = parser.parse_args()
@@ -260,11 +260,10 @@ def main():
     init_cfg = global_cfg.clone()
     if args.yaml:
         init_cfg.merge_from_file(args.yaml)
+        init_cfg.merge_from_list(args.opts)
         YamlConfigClass.config = init_cfg
-        YamlConfigClass.ckpt_dir = args.ckpt_dir
     else:
         YamlConfigClass.config = None
-        YamlConfigClass.ckpt_dir = None
 
     # dawei: register local model
     # transformers.AutoConfig.register(MegatronLlamaConfig.model_type, MegatronLlamaConfig)

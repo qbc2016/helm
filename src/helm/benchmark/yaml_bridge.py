@@ -1,4 +1,3 @@
-
 def singleton(cls):
     _instance = {}
 
@@ -12,4 +11,3 @@ def singleton(cls):
 @singleton
 class YamlConfigClass:
     config = None
-    ckpt_dir = None
