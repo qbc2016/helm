@@ -129,8 +129,8 @@ class HuggingFaceServer:
                         }
                     )
                     logprobs_of_chosen_tokens.append(logprobs[sequences[completion_id][i + 1]].item())
-                    all_logprobs_of_chosen_tokens.append(logprobs_of_chosen_tokens)
-                    all_top_logprobs_dicts.append(top_logprobs_dicts)
+                all_logprobs_of_chosen_tokens.append(logprobs_of_chosen_tokens)
+                all_top_logprobs_dicts.append(top_logprobs_dicts)
         else:
             output = self.model.generate(**encoded_input, **relevant_raw_request)
             sequences = output.sequences
