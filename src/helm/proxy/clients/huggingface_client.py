@@ -23,7 +23,7 @@ import os
 import threading
 
 from helm.benchmark.yaml_bridge import YamlConfigClass
-from federatedscope.llm.model.model_builder import get_llm
+from federatedscope.llm.misc.fschat import FSChatBot
 
 
 def print_traceback(e):
@@ -53,21 +53,11 @@ class HuggingFaceServer:
             model_kwargs["revision"] = model_config.revision
         if YamlConfigClass.config:
             cfg = YamlConfigClass.config
+            cfg.device = 0
             with htrack_block(f"Loading Hugging Face model for config {model_config}"):
-                self.model = get_llm(cfg)
-                try:
-                    ckpt = torch.load(cfg.federate.save_to, map_location='cpu')
-                    if 'model' and 'cur_round' in ckpt:
-                        self.model.load_state_dict(ckpt['model'])
-                    else:
-                        self.model.load_state_dict(ckpt)
-                    print(f"Tested ckpt is {cfg.federate.save_to}")
-                except Exception as error:
-                    print(f"{error}, will use raw model.")
-
+                fschatbot = FSChatBot(cfg)
+                self.model = fschatbot.model
                 hlog(f"{type(self.model)}, {self.model.__class__}")
-                self.model.eval()
-                self.model.to(self.device)
             with htrack_block(f"Loading Hugging Face tokenizer for config {model_config}"):
                 self.tokenizer = AutoTokenizer.from_pretrained(model_config.model_id, **model_kwargs)
         else:
@@ -107,7 +97,8 @@ class HuggingFaceServer:
         # dawei: resolve the bug for huggingface
         # Use HuggingFace's `generate` method.
         # del encoded_input['token_type_ids']
-        del encoded_input['token_type_ids']
+        if 'token_type_ids' in encoded_input.keys():
+            del encoded_input['token_type_ids']
         if raw_request['echo_prompt'] and raw_request['max_new_tokens'] == 0:
             logits = self.model.forward(**encoded_input).logits
             sequences = encoded_input.input_ids
