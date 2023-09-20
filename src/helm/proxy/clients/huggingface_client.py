@@ -59,7 +59,8 @@ class HuggingFaceServer:
                 self.model = fschatbot.model
                 hlog(f"{type(self.model)}, {self.model.__class__}")
             with htrack_block(f"Loading Hugging Face tokenizer for config {model_config}"):
-                self.tokenizer = AutoTokenizer.from_pretrained(model_config.model_id, **model_kwargs)
+                # self.tokenizer = AutoTokenizer.from_pretrained(model_config.model_id, **model_kwargs)
+                self.tokenizer = fschatbot.tokenizer
         else:
             with htrack_block(f"Loading Hugging Face model for config {model_config}"):
                 self.model = AutoModelForCausalLM.from_pretrained(
